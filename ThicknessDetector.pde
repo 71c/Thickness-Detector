@@ -4,12 +4,13 @@ created from 2017-11-01 to 2017-11-06
 Finds the thickness of lines and visualizes the the thickness
 of the line at each every pixel on the line.
 Inspired by Nina Stössinger’s stroke-thickness visualization
-script that was made for Frere-Jones Type.
+script that was made for Frere-Jones Type: http://ninastoessinger.com/about/news/visualizing-stroke-thickness-frerejones/
 */
 
 
 import java.io.File;
 PImage img;
+String imgName;
 PImage[] images;
 float framesPerRotation;
 boolean savingDone;
@@ -18,34 +19,35 @@ ArrayList<Point> positions;
 
 color foreground;
 color background;
+color lowThicknessColor;
+color highThicknessColor;
 
-String absolutePath = "/Users/alon/Documents/Processing/ThicknessDetector/data/";
+String absolutePath = "/Users/alon/Documents/Processing/ThicknessDetector/data/"; // Replace this string by absolute path of the data folder (in the sketch folder). Command-K to show the sketch folder. If there is no folder in it called "data", make one. 
 String fileExtension = "png";
 
 void setup(){
-  
-  size(800,450);
+  size(512,512);
   noSmooth();
   strokeWeight(2);
-  img = loadImage("untapered.png");
-  framesPerRotation = 262;
-  foreground = color(235, 235, 235);
-  background = color(30, 30, 30);
+  imgName = "line.png";
+  img = loadImage(imgName);
+  framesPerRotation = 24;
+  //foreground = color(235, 235, 235);
+  foreground = color(0);
+  //background = color(30, 30, 30);
+  background = color(255);
+  
+  lowThicknessColor = color(254, 240, 50);
+  highThicknessColor = color(217, 59, 66);
+  
   images = new PImage[(int)framesPerRotation];
   minThicknesses = new HashMap<Point, Integer>();
   positions = new ArrayList<Point>();
-  
   image(img, 0, 0);
-  
-  
   deleteFiles();
-
-
-  
-  
-  
 }
 
+//Extend a horizontal line to the left and the right of a point that is on the line to measure the thickness of. The ends of this horizontal line are at the ends of the big line.
 int findHorizontalThickness(PImage image, Point p) {
   //System.out.println("(" + p.x + ", " + p.y + ")");
   assert image.pixels[image.width*p.y+p.x] == foreground;
@@ -60,76 +62,79 @@ int findHorizontalThickness(PImage image, Point p) {
   return rightX - leftX - 1;
 }
 
+//Almost everything is in this draw loop: for certain sets of fraims a different function is done.
 void draw(){
-  
-  if(frameCount <= framesPerRotation){
+  if(frameCount <= framesPerRotation){ // saves all of the rotated images
     background(255);
     translate(width/2, height/2);
     rotate(radians((float)frameCount / framesPerRotation * 360f));
     image(img, -width/2, -height/2);
     saveFrame("/Users/alon/Documents/Processing/ThicknessDetector/data/image-####." + fileExtension);
-  }else if(frameCount <= 2 * framesPerRotation){
+  }else if(frameCount <= 2 * framesPerRotation){ // adds all of the rotaed images to the images array
     println("image-" + java.lang.String.format("%04d", frameCount - (int)framesPerRotation) + "." + fileExtension);
     images[frameCount - (int)framesPerRotation - 1] = loadImage("image-" + java.lang.String.format("%04d", frameCount - (int)framesPerRotation) + "." + fileExtension);
-  }else if(frameCount == 2 * framesPerRotation + 1){
-    for(int y = 0; y < img.height; y++){
-      for(int x = 0; x < img.width; x++){
-        if(img.pixels[width*y+x] == foreground){
-          positions.add(new Point(x, y));
-          minThicknesses.put(new Point(x, y), 0);
-        }
-      }
-    }
+  }else if(frameCount == 2 * framesPerRotation + 1){ 
+    makePositionsAndMinThicknesses();
   }else if(frameCount <= 3 * framesPerRotation + 1){
-    int degrees = (frameCount - 2) % (int)framesPerRotation;
-    PImage currentImage = images[degrees];
-    image(currentImage, 0, 0);
-    /*
-    degrees of original image + degrees rotated for this image
-    d = atan2 + imageDeg
-    (r*sin(d),r*cos(d))
-    */
-    for(Point p : minThicknesses.keySet()) {
-      float r = dist(img.width/2, img.height/2, p.x, p.y);
-      float d = degrees(atan2(p.x - img.width/2, p.y - img.height/2)) - ((degrees + 1) * 360 / framesPerRotation);
-      int newX = int(r * sin(radians(d))) + img.width/2;
-      int newY = int(r * cos(radians(d))) + img.height/2;
-      //if(img.get(newX, newY) == foreground){
-        //stroke(#FF0000);
-        //point(newX, newY);
-      //}
-      if(newX >= 0 && newX < img.width && newY >= 0 && newY < img.height - 1 && currentImage.get(newX, newY) == foreground) {
-        int h = findHorizontalThickness(currentImage, new Point(newX, newY));
-        if(h < minThicknesses.get(p).intValue() || minThicknesses.get(p).intValue() == 0)
-          minThicknesses.put(p, h);
-      }
-    }
-  } else if(frameCount == 3 * framesPerRotation + 2) {
-    int max = 0;
-    int min = Integer.MAX_VALUE;
-    for(Point p : minThicknesses.keySet()) {
-      if(minThicknesses.get(p).intValue() > max)
-        max = minThicknesses.get(p).intValue();
-      if(minThicknesses.get(p).intValue() < min)
-        min = minThicknesses.get(p).intValue();
-    }
-    System.out.println(min);
-    System.out.println(max);
-    background(0);
-    for(Point p : minThicknesses.keySet()) {
-      //System.out.println(map(minThicknesses.get(p).intValue(), min, max, 0, 1));
-      
-      //stroke(map(minThicknesses.get(p).intValue(), min, max, 0, 255));
-      stroke(lerpColor(color(254, 240, 50), color(217, 59, 66), map(minThicknesses.get(p).intValue(), min + 15, max - 15, 0, 1)));
-      //stroke((map(minThicknesses.get(p).intValue(), 1, 256, 0, 255)));
-      
-      //System.out.println(p.orderedPair());
-      point(p.x, p.y);
-    }
-    save("done" + (int)random(999) + ".png");
+    setThicknesses();
+  } else if(frameCount == 3 * framesPerRotation + 2) { 
+    drawThicknesses();
   }
 
   //point((float)width / 2f * sin(radians((float)frameCount/framesPerRotation*360f)) + (float)width/2f, (float)height/-2f * cos(radians((float)frameCount/framesPerRotation*360f)) + (float)height/2f);
+}
+
+// adds the foreground positions to the positions ArrayList and the minThicknesses HashMap
+void makePositionsAndMinThicknesses() {
+  for(int y = 0; y < img.height; y++){
+    for(int x = 0; x < img.width; x++){
+      if(img.pixels[width*y+x] == foreground){
+        positions.add(new Point(x, y));
+        minThicknesses.put(new Point(x, y), 0);
+      }
+    }
+  }
+}
+
+// sets the (minimum) thicknesses in the minThicknesses HashMap
+void setThicknesses() {
+  int degrees = (frameCount - 2) % (int)framesPerRotation;
+  PImage currentImage = images[degrees];
+  image(currentImage, 0, 0);
+  for(Point p : minThicknesses.keySet()) {
+    float r = dist(img.width/2, img.height/2, p.x, p.y);
+    float d = degrees(atan2(p.x - img.width/2, p.y - img.height/2)) - ((degrees + 1) * 360 / framesPerRotation);
+    int newX = int(r * sin(radians(d))) + img.width/2;
+    int newY = int(r * cos(radians(d))) + img.height/2;
+    if(currentImage.get(newX, newY) == foreground) {
+      int h = findHorizontalThickness(currentImage, new Point(newX, newY));
+      if(h < minThicknesses.get(p).intValue() || minThicknesses.get(p).intValue() == 0)
+        minThicknesses.put(p, h);
+    }
+  }
+}
+
+
+// draws the thicknesses from the minThicknesses HashMap
+void drawThicknesses() {
+  int max = 0;
+  int min = Integer.MAX_VALUE;
+  for(Point p : minThicknesses.keySet()) {
+    if(minThicknesses.get(p).intValue() > max)
+      max = minThicknesses.get(p).intValue();
+    if(minThicknesses.get(p).intValue() < min)
+      min = minThicknesses.get(p).intValue();
+  }
+  System.out.println(min);
+  System.out.println(max);
+  background(0);
+  for(Point p : minThicknesses.keySet()) {
+    //stroke(map(minThicknesses.get(p).intValue(), min, max, 0, 255));
+    stroke(lerpColor(lowThicknessColor, highThicknessColor, map(minThicknesses.get(p).intValue(), min + 15, max - 15, 0, 1)));
+    point(p.x, p.y);
+  }
+  //save("done" + (int)random(999) + ".png");
+  save("thickness " + imgName + " " + framesPerRotation + "fpr " + hex(lowThicknessColor) + " to " + hex(highThicknessColor) + ".png");
 }
 
 void deleteFiles(){
