@@ -7,7 +7,6 @@ Inspired by Nina Stössinger’s stroke-thickness visualization
 script that was made for Frere-Jones Type: http://ninastoessinger.com/about/news/visualizing-stroke-thickness-frerejones/
 */
 
-
 import java.io.File;
 PImage img;
 String imgName;
@@ -36,14 +35,12 @@ void setup(){
   
   framesPerRotation = 360; // Set this lower for more speed or higher for more accuracy and better looks
   
-  //foreground = color(235, 235, 235);
   foreground = color(0);
-  //background = color(30, 30, 30);
   background = color(255);
   
   //lowThicknessColor = color(254, 240, 50);
-  lowThicknessColor = color(0);
   //highThicknessColor = color(217, 59, 66);
+  lowThicknessColor = color(0);
   highThicknessColor = color(255);
   
   images = new PImage[(int)framesPerRotation];
