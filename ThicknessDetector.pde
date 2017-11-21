@@ -1,6 +1,6 @@
 /*
 Line Thickness Detector / Stroke-Thickness Visualizer
-created from 2017-11-01 to 2017-11-06
+Created mainly from 2017-11-01 to 2017-11-06
 Finds the thickness of lines and visualizes the the thickness
 of the line at each every pixel on the line.
 Inspired by Nina Stössinger’s stroke-thickness visualization
@@ -12,54 +12,45 @@ import java.io.File;
 PImage img;
 String imgName;
 PImage[] images;
-float framesPerRotation;
+float framesPerRotation; // Number of images it saves. Set lower for more speed or higher for more accuracy.
 boolean savingDone;
-HashMap<Point, Integer> minThicknesses;
-ArrayList<Point> positions;
+HashMap<Point, Integer> minThicknesses; // the thickness at each point
+ArrayList<Point> positions; // the points whose color is the foreground color
 
-color foreground;
-color background;
-color lowThicknessColor;
-color highThicknessColor;
+color foreground; // the original image's foreground color
+color background; // the original image's background color
+color lowThicknessColor; // The color in the gradient that represents low thickness
+color highThicknessColor; // The color in the gradient that represents high thickness
 
-String absolutePath = "/Users/alon/Documents/Processing/ThicknessDetector/data/"; // Replace this string by absolute path of the data folder (in the sketch folder). Command-K to show the sketch folder. If there is no folder in it called "data", make one. 
-String fileExtension = "png";
+String absolutePath;
+String fileExtension;
 
 void setup(){
+  absolutePath = "/Users/alon/Documents/Processing/ThicknessDetector/data/"; // Replace this string by absolute path of the data folder (in the sketch folder). Command-K to show the sketch folder. If there is no folder in it called "data", make one. 
+  fileExtension = "png";
   size(512,512);
   noSmooth();
   strokeWeight(2);
   imgName = "line.png";
   img = loadImage(imgName);
-  framesPerRotation = 24;
+  
+  framesPerRotation = 360; // Set this lower for more speed or higher for more accuracy and better looks
+  
   //foreground = color(235, 235, 235);
   foreground = color(0);
   //background = color(30, 30, 30);
   background = color(255);
   
-  lowThicknessColor = color(254, 240, 50);
-  highThicknessColor = color(217, 59, 66);
+  //lowThicknessColor = color(254, 240, 50);
+  lowThicknessColor = color(0);
+  //highThicknessColor = color(217, 59, 66);
+  highThicknessColor = color(255);
   
   images = new PImage[(int)framesPerRotation];
   minThicknesses = new HashMap<Point, Integer>();
   positions = new ArrayList<Point>();
   image(img, 0, 0);
   deleteFiles();
-}
-
-//Extend a horizontal line to the left and the right of a point that is on the line to measure the thickness of. The ends of this horizontal line are at the ends of the big line.
-int findHorizontalThickness(PImage image, Point p) {
-  //System.out.println("(" + p.x + ", " + p.y + ")");
-  assert image.pixels[image.width*p.y+p.x] == foreground;
-  int leftX = p.x;
-  while (leftX >= 0 && image.pixels[image.width*p.y + leftX] == foreground) {
-    leftX--;
-  }
-  int rightX = p.x;
-  while (rightX < image.width && image.pixels[image.width * p.y  + rightX] == foreground) {
-    rightX++;
-  }
-  return rightX - leftX - 1;
 }
 
 //Almost everything is in this draw loop: for certain sets of fraims a different function is done.
@@ -69,19 +60,17 @@ void draw(){
     translate(width/2, height/2);
     rotate(radians((float)frameCount / framesPerRotation * 360f));
     image(img, -width/2, -height/2);
-    saveFrame("/Users/alon/Documents/Processing/ThicknessDetector/data/image-####." + fileExtension);
+    saveFrame(absolutePath + "image-####." + fileExtension);
   }else if(frameCount <= 2 * framesPerRotation){ // adds all of the rotaed images to the images array
     println("image-" + java.lang.String.format("%04d", frameCount - (int)framesPerRotation) + "." + fileExtension);
     images[frameCount - (int)framesPerRotation - 1] = loadImage("image-" + java.lang.String.format("%04d", frameCount - (int)framesPerRotation) + "." + fileExtension);
-  }else if(frameCount == 2 * framesPerRotation + 1){ 
+  }else if(frameCount == 2 * framesPerRotation + 1){
     makePositionsAndMinThicknesses();
   }else if(frameCount <= 3 * framesPerRotation + 1){
     setThicknesses();
-  } else if(frameCount == 3 * framesPerRotation + 2) { 
+  } else if(frameCount == 3 * framesPerRotation + 2) {
     drawThicknesses();
   }
-
-  //point((float)width / 2f * sin(radians((float)frameCount/framesPerRotation*360f)) + (float)width/2f, (float)height/-2f * cos(radians((float)frameCount/framesPerRotation*360f)) + (float)height/2f);
 }
 
 // adds the foreground positions to the positions ArrayList and the minThicknesses HashMap
@@ -114,7 +103,6 @@ void setThicknesses() {
   }
 }
 
-
 // draws the thicknesses from the minThicknesses HashMap
 void drawThicknesses() {
   int max = 0;
@@ -135,6 +123,21 @@ void drawThicknesses() {
   }
   //save("done" + (int)random(999) + ".png");
   save("thickness " + imgName + " " + framesPerRotation + "fpr " + hex(lowThicknessColor) + " to " + hex(highThicknessColor) + ".png");
+}
+
+//Extend a horizontal line to the left and the right of a point that is on the line to measure the thickness of. The ends of this horizontal line are at the ends of the big line.
+int findHorizontalThickness(PImage image, Point p) {
+  //System.out.println("(" + p.x + ", " + p.y + ")");
+  assert image.pixels[image.width*p.y+p.x] == foreground;
+  int leftX = p.x;
+  while (leftX >= 0 && image.pixels[image.width*p.y + leftX] == foreground) {
+    leftX--;
+  }
+  int rightX = p.x;
+  while (rightX < image.width && image.pixels[image.width * p.y  + rightX] == foreground) {
+    rightX++;
+  }
+  return rightX - leftX - 1;
 }
 
 void deleteFiles(){
